@@ -17,37 +17,40 @@ def print_progress_bar(port, progress):
     bar = f"{GREEN}{'#' * filled_length}{RESET}{'.' * (bar_length - filled_length)}"
     sys.stdout.write(f"\r[Scanning Port {port}] [{bar}] {progress}%")
     sys.stdout.flush()
-    
-# Function to scan an individual port
+
 def scan_port(ip, port):
+    """Scans a single port and prints results after animation."""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(1)
             result = s.connect_ex((ip, port))
+
+            # Simulated progress bar (fills to 100%)
+            for progress in range(0, 101, 10):
+                print_progress_bar(port, progress)
+                time.sleep(0.05)  # Simulated delay for effect
             
+            sys.stdout.write("\n")  # Move to new line after progress bar
+
             if result == 0:
-                print(f"\n[+] Port {port} is OPEN")
+                print(f"[+] Port {port} is OPEN")
                 recommendation = get_recommendations(port)
                 print(f"[*] Recommendation: {recommendation}")
 
                 response = interact_with_port(ip, port)
                 print(f"[*] Response from port {port}: {response}")
+            else:
+                print(f"[-] Port {port} is CLOSED")
 
     except Exception as e:
         print(f"\n[-] Error scanning port {port}: {str(e)}")
 
-# Function to scan a range of ports with a progress animation
 def scan_ports(ip, start_port, end_port):
+    """Scans a range of ports using multiple threads."""
     print(f"\n[*] Scanning {ip} from port {start_port} to {end_port}...\n")
     threads = []
 
     for port in range(start_port, end_port + 1):
-        for progress in range(0, 101, 10):  # Increment progress in steps of 10%
-            print_progress_bar(port, progress)
-            time.sleep(0.05)  # Simulated delay for animation effect
-        
-        sys.stdout.write("\n")  # Move to a new line after progress bar completion
-
         thread = threading.Thread(target=scan_port, args=(ip, port))
         threads.append(thread)
         thread.start()
@@ -55,7 +58,6 @@ def scan_ports(ip, start_port, end_port):
     for thread in threads:
         thread.join()
 
-# Main function
 def main():
     try:
         ip = input("Enter the target IP or hostname to scan: ").strip()
