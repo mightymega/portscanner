@@ -5,6 +5,9 @@ import sys
 from recommendations import get_recommendations
 from port_interaction import interact_with_port
 
+# High-risk ports commonly targeted by hackers on Android
+HIGH_RISK_PORTS = [5555, 22, 80, 443, 23, 2323, 5900, 5353, 8080, 8443]
+
 # ANSI color codes for green text
 GREEN = "\033[92m"
 RESET = "\033[0m"
@@ -45,12 +48,12 @@ def scan_port(ip, port):
     except Exception as e:
         print(f"\n[-] Error scanning port {port}: {str(e)}")
 
-def scan_ports(ip, start_port, end_port):
-    """Scans a range of ports using multiple threads."""
-    print(f"\n[*] Scanning {ip} from port {start_port} to {end_port}...\n")
+def scan_high_risk_ports(ip):
+    """Scans only high-risk Android ports."""
+    print(f"\n[*] Scanning {ip} for high-risk ports: {HIGH_RISK_PORTS}\n")
     threads = []
 
-    for port in range(start_port, end_port + 1):
+    for port in HIGH_RISK_PORTS:
         thread = threading.Thread(target=scan_port, args=(ip, port))
         threads.append(thread)
         thread.start()
@@ -71,10 +74,7 @@ def main():
             print("[-] Invalid IP or hostname.")
             return
 
-        start_port = int(input("Enter the start port (default: 1): ") or 1)
-        end_port = int(input("Enter the end port (default: 65535): ") or 65535)
-
-        scan_ports(ip, start_port, end_port)
+        scan_high_risk_ports(ip)
 
     except KeyboardInterrupt:
         print("\n[-] Scan interrupted by user. Exiting.")
