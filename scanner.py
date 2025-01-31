@@ -1,64 +1,62 @@
 import socket
-import time
 import threading
-import curses
-from logger import log_open_port
 from recommendations import get_recommendations
 from port_interaction import interact_with_port, send_payload
 
-open_ports = []
+# Function to scan a specific port
+def scan_port(ip, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1)  # 1 second timeout for each connection attempt
+            result = s.connect_ex((ip, port))
+            if result == 0:
+                print(f"[+] Port {port} is OPEN")
+                recommendation = get_recommendations(port)
+                print(f"[*] Recommendation: {recommendation}")
 
-def scan_port(target, port, stdscr):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1)
-    result = s.connect_ex((target, port))  # 0 means the port is open
-    if result == 0:
-        open_ports.append(port)
-        log_open_port(port)
-        interact_with_port(target, port)
-        send_payload(target, port)  # Send payload to the open port
-        stdscr.addstr(f"\rPort {port} is OPEN\n")
-        stdscr.refresh()
-    s.close()
+                # Try interacting with the open port
+                response = interact_with_port(ip, port)
+                print(f"[*] Response from port {port}: {response}")
 
-def scan_ports(target, start_port, end_port, stdscr):
+    except Exception as e:
+        print(f"[-] Error scanning port {port}: {str(e)}")
+
+# Function to scan a range of ports
+def scan_ports(ip, start_port, end_port):
+    print(f"[*] Scanning {ip} from port {start_port} to {end_port}...\n")
     threads = []
+    
     for port in range(start_port, end_port + 1):
-        thread = threading.Thread(target=scan_port, args=(target, port, stdscr))
+        thread = threading.Thread(target=scan_port, args=(ip, port))
         threads.append(thread)
         thread.start()
 
     for thread in threads:
         thread.join()
 
-def display_results(target):
-    if open_ports:
-        print(f"\nThe following ports are open on {target}:")
-        for port in open_ports:
-            print(f"Port {port}")
-            get_recommendations(port)  # Get recommendations based on open ports
-    else:
-        print(f"\nNo open ports found on {target}.")
+# Main function
+def main():
+    # Make sure input is accepted properly
+    try:
+        ip = input("Enter the target IP or hostname to scan: ").strip()
+        if not ip:
+            print("[-] No IP provided. Exiting.")
+            return
 
-def user_input():
-    target = input("Enter the target IP or hostname to scan: ")
-    start_port = int(input("Enter the starting port to scan: "))
-    end_port = int(input("Enter the ending port to scan: "))
-    return target, start_port, end_port
+        # Convert hostname to IP if needed
+        try:
+            ip = socket.gethostbyname(ip)
+        except socket.gaierror:
+            print("[-] Invalid IP or hostname.")
+            return
+
+        start_port = int(input("Enter the start port (default: 1): ") or 1)
+        end_port = int(input("Enter the end port (default: 65535): ") or 65535)
+
+        scan_ports(ip, start_port, end_port)
+
+    except KeyboardInterrupt:
+        print("\n[-] Scan interrupted by user. Exiting.")
 
 if __name__ == "__main__":
-    # Initialize the curses window
-    stdscr = curses.initscr()
-    curses.cbreak()
-    stdscr.clear()
-
-    target, start_port, end_port = user_input()
-    print(f"Starting scan on {target} from port {start_port} to {end_port}")
-    start_time = time.time()
-    scan_ports(target, start_port, end_port, stdscr)
-    end_time = time.time()
-    print(f"Scan completed in {end_time - start_time:.2f} seconds.")
-    display_results(target)
-
-    # Clean up curses settings
-    curses.endwin()
+    main()
